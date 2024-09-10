@@ -12,7 +12,7 @@ services:
     container_name: backend
     build: ./backend
     env_file:
-      - ./backend/.env.docker
+      - ./backend/.env.sample
     ports:
       - "5000:5000"
     depends_on:
