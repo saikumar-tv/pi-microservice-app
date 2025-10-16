@@ -41,6 +41,15 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+      - name: Azure Login
+        uses: azure/login@v2.3.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR Login
+        run: az acr login --name $AZURE_CONTAINER_REGISTRY
 
       - name: Build and push frontend Docker image
         uses: docker/build-push-action@v4
@@ -49,8 +58,6 @@ jobs:
           push: true
           tags: ${{ env.AZURE_CONTAINER_REGISTRY }}/frontend:${{ github.sha }}
           file: ./frontend/Dockerfile
-          username: ${{ secrets.AZURE_CR_USERNAME }}
-          password: ${{ secrets.AZURE_CR_PASSWORD }}
 
       - name: Scan frontend Docker image for vulnerabilities
         uses: aquasecurity/trivy-action@master
