@@ -1,0 +1,57 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: pipocwebapp.azurecr.io
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies
+        run: npm install
+        working-directory: backend
+
+      - name: Lint backend code
+        run: npm run lint
+        working-directory: backend
+
+      - name: Scan backend for vulnerabilities
+        run: npm audit --audit-level=high
+        working-directory: backend
+
+      - name: Build and push backend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.AZURE_CONTAINER_REGISTRY }}/backend:${{ github.sha }}
+          file: ./backend/Dockerfile
+          username: ${{ secrets.AZURE_CR_USERNAME }}
+          password: ${{ secrets.AZURE_CR_PASSWORD }}
+
+      - name: Scan backend Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.AZURE_CONTAINER_REGISTRY }}/backend:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
